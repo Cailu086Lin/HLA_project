@@ -1,0 +1,303 @@
+---
+title: "HLA_project"
+author: "Cailu Lin"
+date: "2019_12_11"
+output:
+  html_document: default
+  #word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Clear existing data and graphics
+```{r echo=FALSE}
+rm(list = ls())
+graphics.off()
+```
+
+#Loadlibrary
+```{r echo=FALSE }
+pacman::p_load(readxl, plyr, dplyr, MatchIt, mice, knitr, Matching, magrittr, tableone, reshape, kableExtra, broom, stringr, rgenoud, tidyverse, Hmisc, uwIntroStats, ggpubr, epitools, survey, lubridate, HardyWeinberg, aod)
+```
+
+
+#FOR PRINTING TABLES if need
+```{r formatting, echo=FALSE}
+# Print with n digits of precision
+fixed_digits <- function(xs, n = 2) {
+  formatC(xs, digits = n, format = "f")
+}
+
+# Print three digits of a p-value, but use
+# the "< .001" notation on tiny values.
+format_pval <- function(ps, html = FALSE) {
+  tiny <- ifelse(html, "&lt;&nbsp;.001", "< .001")
+  ps_chr <- ps %>% fixed_digits(3)
+  ps_chr[ps < 0.001] <- tiny
+  ps_chr
+}
+fix_names <- . %>%
+  str_replace(".Intercept.", "Intercept")
+  
+
+two_digits <- . %>% fixed_digits(2)
+table_names <- c("Compound", "Estimate", "SE",
+                 "t", "p")
+
+format_model_table <- . %>%
+  mutate_each(funs(two_digits),
+              -term, -p.value) %>%
+  mutate(term = fix_names(term),
+         p.value = format_pval(p.value)) %>%
+  set_colnames(table_names)
+
+```
+
+##CRS vs control
+```{r  echo=FALSE}
+df <- read.csv("datrs1391371Dec2019_v2.csv",na.strings = "", header=T)
+df<-subset(df, select=c("SubjectID",
+         "Geno_rs1391371",
+         "TAS2R38",
+         "Sex",
+         "group1",
+        "group2"))%>%
+  filter(TAS2R38=="AVI/AVI"|TAS2R38=="AVI/PAV"|TAS2R38=="PAV/PAV")%>%drop_na(Geno_rs1391371, TAS2R38)
+
+df$TAS2R38<-factor(as.character(df$TAS2R38))
+
+## do logical regression analysis test for HLA
+df<-df%>%
+  mutate(Group=ifelse(grepl("control", group1), 0, 1))
+
+mylogit <- glm(group1 ~ Geno_rs1391371 + Sex, data = df, family = "binomial")
+summary(mylogit)
+
+#look at Geno between CRS and Control 
+table<-CreateTableOne(vars=c("Sex","Geno_rs1391371","TAS2R38"), data=df, factorVars=c("Geno_rs1391371", "Sex"), strata="group1")
+table<-print(table, exact="group1", smd= TRUE)
+```
+
+```{r echo=FALSE}
+table %>%
+  kable(caption="Table 1. HLA geno, CRS v. Controls") %>%
+  row_spec(1, bold=T) %>%
+  kable_styling(bootstrap_options = c("hover", "condensed","striped"), full_width = F, fixed_thead = T) 
+
+```
+
+
+##CRSwNP vs control
+```{r  echo=FALSE}
+df <- read.csv("datrs1391371Dec2019.csv",na.strings = "", ,header=T)%>%
+  filter(group2 !="CRSsNP")
+df<-subset(df, select=c("SubjectID",
+         "Geno_rs1391371",
+         "TAS2R38",
+         "Sex",
+        "group2"))%>%
+  filter(TAS2R38=="AVI/AVI"|TAS2R38=="AVI/PAV"|TAS2R38=="PAV/PAV")%>%drop_na(Geno_rs1391371, TAS2R38)
+df$group2<-factor(as.character(df$group2))
+df$TAS2R38<-factor(as.character(df$TAS2R38))
+
+# do logical regression analysis test for HLA
+df<-df%>%
+  mutate(Group=ifelse(grepl("control", group2), 0, 1))
+
+mylogit <- glm(group2 ~ Geno_rs1391371 + Sex, data = df, family = "binomial")
+summary(mylogit)
+
+#look at Geno between CRS and Control 
+table1<-CreateTableOne(vars=c("Sex","Geno_rs1391371", "TAS2R38"), data=df, factorVars=c("Sex", "Geno_rs1391371","TAS2R38" ), strata="group2")
+table1<-print(table1, exact="group2", smd= TRUE)
+
+```
+
+
+```{r  echo=FALSE}
+table1 %>%
+  kable(caption="Table 2. HLA geno, CRSwNP v. Controls") %>%
+  row_spec(1, bold=T) %>%
+  kable_styling(bootstrap_options = c("hover", "condensed","striped"), full_width = F, fixed_thead = T) 
+```
+
+
+
+##CRSsNP vs Control
+```{r echo=FALSE}
+df <- read.csv("datrs1391371Dec2019.csv",na.strings = "",header=T)%>%
+  filter(group2 !="CRSwNP")
+df<-subset(df, select=c("SubjectID",
+                        "Geno_rs1391371",
+                         "TAS2R38",
+                        "Sex",
+                        "group2"))%>%
+filter(TAS2R38=="AVI/AVI"|TAS2R38=="AVI/PAV"|TAS2R38=="PAV/PAV")%>%drop_na(Geno_rs1391371, TAS2R38)
+
+df$group2<-factor(as.character(df$group2))
+df$TAS2R38<-factor(as.character(df$TAS2R38))
+
+# do logical regression analysis test for HLA
+df<-df%>%
+  mutate(Group=ifelse(grepl("control", group2), 0, 1))
+
+mylogit <- glm(group2 ~ Geno_rs1391371 + Sex, data = df, family = "binomial")
+summary(mylogit)
+
+#look at Geno between CRS and Control 
+table2<-CreateTableOne(vars=c("Sex","Geno_rs1391371", "TAS2R38"), data=df, factorVars=c("Sex", "Geno_rs1391371","TAS2R38"), strata="group2")
+table2<-print(table2, exact="group2", smd= TRUE)
+```
+
+
+```{r echo=FALSE }
+table2 %>%
+  kable(caption="Table 3. HLA geno, CRSsNP v. Controls") %>%
+  row_spec(1, bold=T) %>%
+  kable_styling(bootstrap_options = c("hover", "condensed","striped"), full_width = F, fixed_thead = T) 
+```
+
+  
+##checking HWE
+```{r  echo=FALSE }
+df<-read.csv("datrs1391371Dec2019.csv",na.strings = "", header=T)
+df<-subset(df, select=c("SubjectID",
+         "Geno_rs1391371",
+         "group1",
+        "group2"))%>%
+  drop_na(Geno_rs1391371)
+##all dat
+haplo<-ddply(df,~Geno_rs1391371,summarise,Number=length(unique(SubjectID)))
+z <- haplo$Number
+names(z) <- c("AA", "AT", "TT")
+HW.test<- HWExact(z, alternative = "two.sided", pvaluetype = "selome", x.linked = FALSE, verbose = TRUE) 
+p.allele_all <- 1*(z[[2]]+z[[3]]+z[[3]]) / (2*(z[[1]]+z[[2]]+z[[3]]))
+pvaldf <- HW.test$pval
+
+##CRS and control separately
+haplo<-ddply(df,group1~Geno_rs1391371,summarise,Number=length(unique(SubjectID)))
+
+#Controls
+haplo_control <- haplo[which(haplo$group1=="Control"),]
+x <- haplo_control$Numbe
+names(x) <- c("AA","AT", "TT")
+HW.test.controls<- HWExact(x, alternative = "two.sided", pvaluetype = "selome", x.linked = FALSE, verbose = TRUE) 
+p.allele_control <- 1*(x[[2]]+x[[3]]+x[[3]]) / (2*(x[[1]]+x[[2]]+x[[3]]))
+pval_control <- HW.test.controls$pval
+
+#Cases
+haplo_case <- haplo[which(haplo$group1=="CRS"),]
+y <- haplo_case$Number
+names(y) <- c("AA", "AT", "TT")
+HW.test.case <- HWExact(y, alternative = "two.sided", pvaluetype = "selome", x.linked = FALSE, verbose = TRUE)
+p.allele_case <- 1*(y[[2]]+y[[3]]+y[[3]]) / (2*(y[[1]]+y[[2]]+y[[3]]))
+pval_case <- HW.test.case$pval
+
+#Table
+p.allele <- c(p.allele_all, p.allele_control,p.allele_case)
+pval <- c(pvaldf, pval_control,pval_case)
+cats <- c("all data","Controls", "CRS")
+hwetest <- data.frame(Control=cats, p.allele=p.allele, pval=pval)
+hwetest
+
+```
+
+
+```{r echo=FALSE }
+hwetest %>%
+  kable(caption="Table 4. HWE calculations of HLA geno") %>%
+  row_spec(1, bold=F) %>%
+  kable_styling(bootstrap_options = c("hover", "condensed"), full_width = F, fixed_thead = T) 
+```
+
+##compute OR
+```{r echo=FALSE}
+pacman::p_load(epitab, epitools, eply)
+
+r<- data.frame(matrix(ncol = 11, nrow = 0))
+colnames(r)<-c("geno","X0","X1","Total","estimate","lower","upper","midp.exact", "fisher.exact","chi.square", "group")
+
+df<-read.csv("datrs1391371Dec2019.csv",na.strings = "", header=T)
+
+#CSR
+d<-df[,c(3,15)] %>%
+  drop_na()%>%
+    group_by(Geno_rs1391371, group1)%>%
+    summarise(n())%>%
+    spread(group1,'n()') %>%
+    as.data.frame()
+  rownames(d) <- d[,1]
+  d[,1] <- NULL
+  colnames(d) <-c("Control", "Patient")
+  d<-as.matrix(d)
+  d<-d[complete.cases(d* 0), , drop=FALSE]
+  
+   oddsratio<-oddsratio(x=d, y=NULL, method = "midp")
+    d1<-data.frame(oddsratio$data)
+    d1$geno <- rownames(d1)
+    d2<-data.frame(oddsratio$measure)
+    d2$geno <- rownames(d2)
+    d3<-data.frame(oddsratio$p.value)
+    d3$geno <- rownames(d3)
+    r1<-merge(d1,merge(d2,d3, by="geno"), by="geno", all=T)
+    r1$group<-"CSR"
+    r<-bind_rows(r, r1)
+#CSRsNP   
+d<-df[,c(3,16)] %>%
+  filter(group2 !="CRSwNP")%>%
+  drop_na()%>%
+    group_by(Geno_rs1391371, group2)%>%
+    summarise(n())%>%
+    spread(group2,'n()') %>%
+    as.data.frame()
+  rownames(d) <- d[,1]
+  d[,1] <- NULL
+  colnames(d) <-c("Control", "Patient")
+  d<-as.matrix(d)
+  d<-d[complete.cases(d* 0), , drop=FALSE]
+  
+   oddsratio<-oddsratio(x=d, y=NULL, method = "midp")
+    d1<-data.frame(oddsratio$data)
+    d1$geno <- rownames(d1)
+    d2<-data.frame(oddsratio$measure)
+    d2$geno <- rownames(d2)
+    d3<-data.frame(oddsratio$p.value)
+    d3$geno <- rownames(d3)
+    r1<-merge(d1,merge(d2,d3, by="geno"), by="geno", all=T)
+    r1$group<-"CSRsNP"
+    r<-bind_rows(r, r1)
+#CSRwNP   
+d<-df[,c(3,16)] %>%
+  filter(group2 !="CRSsNP")%>%
+  drop_na()%>%
+    group_by(Geno_rs1391371, group2)%>%
+    summarise(n())%>%
+    spread(group2,'n()') %>%
+    as.data.frame()
+  rownames(d) <- d[,1]
+  d[,1] <- NULL
+  colnames(d) <-c("Control", "Patient")
+  d<-as.matrix(d)
+  d<-d[complete.cases(d* 0), , drop=FALSE]
+  
+   oddsratio<-oddsratio(x=d, y=NULL, method = "midp")
+    d1<-data.frame(oddsratio$data)
+    d1$geno <- rownames(d1)
+    d2<-data.frame(oddsratio$measure)
+    d2$geno <- rownames(d2)
+    d3<-data.frame(oddsratio$p.value)
+    d3$geno <- rownames(d3)
+    r1<-merge(d1,merge(d2,d3, by="geno"), by="geno", all=T)
+    r1$group<-"CSRwNP"
+    r<-bind_rows(r, r1)
+r<-r[-c(2:3)]    
+r<-r[c(1:2,4,3, 5:6, 8,7, 9:10, 12, 11),c(9, 1,2,10, 11, 3:8)]    
+```
+
+```{r echo=FALSE }
+r %>%
+  kable(caption="Table 5. Computation for OR of HLA geno") %>%
+  row_spec(1, bold=F) %>%
+  kable_styling(bootstrap_options = c("hover", "condensed"), full_width = F, fixed_thead = T) 
+```
